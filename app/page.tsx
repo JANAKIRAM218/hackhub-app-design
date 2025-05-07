@@ -1,6 +1,10 @@
 "use client"
 
-import { useEffect } from "react"
+import { Input } from "@/components/ui/input"
+
+import type React from "react"
+
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { MainNav } from "@/components/main-nav"
 import { Sidebar } from "@/components/sidebar"
@@ -8,18 +12,77 @@ import { PostCard } from "@/components/post-card"
 import { TrendingTopics } from "@/components/trending-topics"
 import { SuggestedUsers } from "@/components/suggested-users"
 import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
+import { Plus, Send, Loader2 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { usePosts } from "@/hooks/use-posts"
 import { useInView } from "react-intersection-observer"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function Home() {
   const router = useRouter()
-  const { isAuthenticated } = useAuth()
-  const { posts, loadMorePosts, hasMore, isLoading } = usePosts()
+  const { isAuthenticated, user } = useAuth()
+  const { posts, loadMorePosts, hasMore, isLoading, refresh } = usePosts()
+  const { toast } = useToast()
 
   // Infinite scroll setup
   const { ref, inView } = useInView()
+
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false)
+
+  const handleCreatePost = (content: string, image?: string) => {
+    // Create a new post object
+    const newPost = {
+      id: `post-${Date.now()}`,
+      user: {
+        name: user?.name || "Anonymous",
+        username: user?.username || "anonymous",
+        avatar: user?.avatar || "/placeholder.svg?height=40&width=40",
+      },
+      content,
+      image,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      createdAt: "Just now",
+    }
+
+    // Store the new post in localStorage
+    const storedPosts = localStorage.getItem("hackhub-posts")
+    let allPosts = []
+
+    if (storedPosts) {
+      try {
+        allPosts = JSON.parse(storedPosts)
+      } catch (error) {
+        console.error("Failed to parse posts:", error)
+      }
+    }
+
+    // Add the new post to the beginning of the posts array
+    allPosts = [newPost, ...allPosts]
+    localStorage.setItem("hackhub-posts", JSON.stringify(allPosts))
+
+    // Refresh posts to include the new one
+    refresh()
+
+    // Close the modal
+    setIsPostModalOpen(false)
+
+    toast({
+      title: "Post created",
+      description: "Your post has been published successfully!",
+    })
+  }
 
   // Load more posts when the user scrolls to the bottom
   useEffect(() => {
@@ -76,6 +139,78 @@ export default function Home() {
     return null // Don't render anything while redirecting
   }
 
+  // Post creation modal
+  const PostModal = () => {
+    const [content, setContent] = useState("")
+    const [image, setImage] = useState("")
+    const [isSubmitting, setIsSubmitting] = useState(false)
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault()
+      if (!content.trim()) return
+
+      setIsSubmitting(true)
+
+      // Simulate API delay
+      setTimeout(() => {
+        handleCreatePost(content, image || undefined)
+        setContent("")
+        setImage("")
+        setIsSubmitting(false)
+      }, 500)
+    }
+
+    return (
+      <Dialog open={isPostModalOpen} onOpenChange={setIsPostModalOpen}>
+        <DialogContent className="sm:max-w-[500px] border-border/40 bg-background/95 backdrop-blur-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold font-mono glow-text">Create Post</DialogTitle>
+            <DialogDescription>Share your code, thoughts, or discoveries with the HackHub community.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <div className="grid gap-4 py-4">
+              <Textarea
+                placeholder="What's on your mind?"
+                className="min-h-[120px] bg-muted/50 border-muted focus:border-neon-green focus:ring-1 focus:ring-neon-green resize-none"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                required
+              />
+              <div className="space-y-2">
+                <Label htmlFor="image-url" className="text-sm font-mono">
+                  Image URL (optional)
+                </Label>
+                <Input
+                  id="image-url"
+                  placeholder="https://example.com/image.jpg"
+                  className="bg-muted/50 border-muted focus:border-neon-green focus:ring-1 focus:ring-neon-green font-mono"
+                  value={image}
+                  onChange={(e) => setImage(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsPostModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="glow" disabled={!content.trim() || isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...
+                  </>
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" /> Publish
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   return (
     <div className="min-h-screen">
       <MainNav />
@@ -87,7 +222,7 @@ export default function Home() {
         <main className="md:col-span-6 space-y-6">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-bold font-mono glow-text">Feed</h1>
-            <Button className="glow">
+            <Button className="glow" onClick={() => setIsPostModalOpen(true)}>
               <Plus className="mr-2 h-4 w-4" /> New Post
             </Button>
           </div>
@@ -122,6 +257,8 @@ export default function Home() {
           </div>
         </aside>
       </div>
+      {/* Post creation modal */}
+      <PostModal />
     </div>
   )
 }

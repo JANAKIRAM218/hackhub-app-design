@@ -7,7 +7,6 @@ import { AuthProvider } from "@/hooks/use-auth"
 import { ThemeProvider } from "@/hooks/use-theme"
 import { MatrixRainEffect } from "@/components/matrix-rain-effect"
 import { Toaster } from "@/components/ui/toaster"
-import { NewPostButton } from "@/components/new-post-button"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 const jetbrainsMono = JetBrains_Mono({
@@ -34,7 +33,6 @@ export default function RootLayout({
             <ThemeProvider>
               <MatrixRainEffect />
               {children}
-              <NewPostButton />
               <Toaster />
             </ThemeProvider>
           </AuthProvider>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
@@ -9,7 +10,6 @@ import { Heart, MessageCircle, Share2, Bookmark, Send, X } from "lucide-react"
 import { CodeBlock } from "@/components/code-block"
 import { useAuth } from "@/hooks/use-auth"
 import { cn } from "@/lib/utils"
-import { UserAvatar } from "@/components/user-avatar"
 
 interface Comment {
   id: string
@@ -53,50 +53,22 @@ export function PostCard({ post }: PostCardProps) {
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isTouchDevice, setIsTouchDevice] = useState(false)
-  const [activeImageId, setActiveImageId] = useState<string | null>(null)
   const commentInputRef = useRef<HTMLTextAreaElement>(null)
-
-  // Check if device supports touch
-  useEffect(() => {
-    const checkTouch = () => {
-      setIsTouchDevice(
-        "ontouchstart" in window || navigator.maxTouchPoints > 0 || (navigator as any).msMaxTouchPoints > 0,
-      )
-    }
-
-    checkTouch()
-
-    // Also check on resize in case of device mode changes
-    window.addEventListener("resize", checkTouch)
-    return () => window.removeEventListener("resize", checkTouch)
-  }, [])
 
   // Default AI-generated image URLs based on post content keywords
   const defaultImages = [
-    "/placeholder.svg?height=300&width=600&text=Cybersecurity+Attack+Visualization",
-    "/placeholder.svg?height=300&width=600&text=Neural+Network+Hack",
-    "/placeholder.svg?height=300&width=600&text=Matrix+Code+Rain",
-    "/placeholder.svg?height=300&width=600&text=Dark+Web+Access+Terminal",
-    "/placeholder.svg?height=300&width=600&text=Blockchain+Security+Breach",
-    "/placeholder.svg?height=300&width=600&text=Quantum+Encryption+Hack",
-    "/placeholder.svg?height=300&width=600&text=Firewall+Penetration",
-    "/placeholder.svg?height=300&width=600&text=Zero+Day+Exploit",
-    "/placeholder.svg?height=300&width=600&text=Biometric+Security+Bypass",
-    "/placeholder.svg?height=300&width=600&text=Social+Engineering+Attack",
+    "/placeholder.svg?height=300&width=600&text=AI+Security+Visualization",
+    "/placeholder.svg?height=300&width=600&text=Neural+Network+Diagram",
+    "/placeholder.svg?height=300&width=600&text=Cybersecurity+Concept",
+    "/placeholder.svg?height=300&width=600&text=Hacker+Terminal+View",
+    "/placeholder.svg?height=300&width=600&text=Blockchain+Technology",
+    "/placeholder.svg?height=300&width=600&text=Quantum+Computing+Visualization",
   ]
 
   // Get a deterministic image based on post ID
   const getDefaultImage = () => {
     const postIdNum = Number.parseInt(post.id.replace(/\D/g, "")) || 0
     return defaultImages[postIdNum % defaultImages.length]
-  }
-
-  // Handle image tap/click for touch devices
-  const handleImageInteraction = (id: string) => {
-    if (isTouchDevice) {
-      setActiveImageId(activeImageId === id ? null : id)
-    }
   }
 
   // Check if post is liked/bookmarked and load comments
@@ -232,14 +204,13 @@ export function PostCard({ post }: PostCardProps) {
     }, 500)
   }
 
-  // Generate unique IDs for images
-  const postImageId = `post-image-${post.id}`
-  const defaultImageId = `default-image-${post.id}`
-
   return (
     <Card className="border-border/40 bg-background/80 backdrop-blur-sm hover:border-primary/40 transition-all duration-300">
       <CardHeader className="flex flex-row items-start gap-4 p-4">
-        <UserAvatar user={post.user} />
+        <Avatar>
+          <AvatarImage src={post.user.avatar || "/placeholder.svg"} alt={post.user.name} />
+          <AvatarFallback className="bg-muted">{post.user.name.charAt(0)}</AvatarFallback>
+        </Avatar>
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
             <span className="font-semibold">{post.user.name}</span>
@@ -252,87 +223,16 @@ export function PostCard({ post }: PostCardProps) {
         <p className="mb-3">{post.content}</p>
 
         {post.image ? (
-          <div
-            id={postImageId}
-            className={cn(
-              "rounded-md overflow-hidden mb-3 border border-border/40 group relative transition-all duration-300",
-              // Apply hover styles only on non-touch devices
-              !isTouchDevice && "hover:border-neon-green",
-              // Apply active styles for touch devices when tapped
-              isTouchDevice &&
-                activeImageId === postImageId &&
-                "border-neon-green shadow-[0_0_15px_rgba(0,255,157,0.5)]",
-            )}
-            data-theme="hacking"
-            onClick={() => handleImageInteraction(postImageId)}
-          >
-            <img
-              src={post.image || "/placeholder.svg"}
-              alt="Post content"
-              className={cn(
-                "w-full h-auto object-cover transition-transform duration-300",
-                // Apply hover styles only on non-touch devices
-                !isTouchDevice && "group-hover:scale-105 group-hover:brightness-110",
-                // Apply active styles for touch devices when tapped
-                isTouchDevice && activeImageId === postImageId && "scale-105 brightness-110",
-              )}
-            />
-            <div
-              className={cn(
-                "absolute inset-0 bg-gradient-to-t from-black/50 to-transparent transition-opacity duration-300",
-                // Apply hover styles only on non-touch devices
-                !isTouchDevice && "opacity-0 group-hover:opacity-100",
-                // Apply active styles for touch devices when tapped
-                isTouchDevice && (activeImageId === postImageId ? "opacity-100" : "opacity-0"),
-              )}
-            ></div>
-            {isTouchDevice && (
-              <div className="absolute bottom-2 right-2 bg-background/80 text-xs text-neon-green px-2 py-1 rounded-full backdrop-blur-sm">
-                Tap to {activeImageId === postImageId ? "close" : "zoom"}
-              </div>
-            )}
+          <div className="rounded-md overflow-hidden mb-3 border border-border/40">
+            <img src={post.image || "/placeholder.svg"} alt="Post content" className="w-full h-auto object-cover" />
           </div>
         ) : !post.code ? (
-          <div
-            id={defaultImageId}
-            className={cn(
-              "rounded-md overflow-hidden mb-3 border border-border/40 group relative transition-all duration-300",
-              // Apply hover styles only on non-touch devices
-              !isTouchDevice &&
-                "hover:border-neon-green hover:shadow-[0_0_15px_rgba(0,255,157,0.5)] hover:animate-pulse-glow",
-              // Apply active styles for touch devices when tapped
-              isTouchDevice &&
-                activeImageId === defaultImageId &&
-                "border-neon-green shadow-[0_0_15px_rgba(0,255,157,0.5)]",
-            )}
-            data-theme="hacking"
-            onClick={() => handleImageInteraction(defaultImageId)}
-          >
+          <div className="rounded-md overflow-hidden mb-3 border border-border/40">
             <img
               src={getDefaultImage() || "/placeholder.svg"}
-              alt="AI generated hacking visualization"
-              className={cn(
-                "w-full h-auto object-cover transition-transform duration-300",
-                // Apply hover styles only on non-touch devices
-                !isTouchDevice && "group-hover:scale-105 group-hover:brightness-110",
-                // Apply active styles for touch devices when tapped
-                isTouchDevice && activeImageId === defaultImageId && "scale-105 brightness-110",
-              )}
+              alt="AI generated visualization"
+              className="w-full h-auto object-cover"
             />
-            <div
-              className={cn(
-                "absolute inset-0 bg-gradient-to-t from-black/50 to-transparent transition-opacity duration-300",
-                // Apply hover styles only on non-touch devices
-                !isTouchDevice && "opacity-0 group-hover:opacity-100",
-                // Apply active styles for touch devices when tapped
-                isTouchDevice && (activeImageId === defaultImageId ? "opacity-100" : "opacity-0"),
-              )}
-            ></div>
-            {isTouchDevice && (
-              <div className="absolute bottom-2 right-2 bg-background/80 text-xs text-neon-green px-2 py-1 rounded-full backdrop-blur-sm">
-                Tap to {activeImageId === defaultImageId ? "close" : "zoom"}
-              </div>
-            )}
           </div>
         ) : null}
 
@@ -392,7 +292,12 @@ export function PostCard({ post }: PostCardProps) {
 
           {/* Comment input */}
           <div className="flex gap-3">
-            {user && <UserAvatar user={user} size="sm" className="flex-shrink-0" />}
+            {user && (
+              <Avatar className="h-8 w-8 flex-shrink-0">
+                <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+            )}
             <div className="flex-1 space-y-2">
               <Textarea
                 ref={commentInputRef}
@@ -422,15 +327,10 @@ export function PostCard({ post }: PostCardProps) {
             {comments.length > 0 ? (
               comments.map((comment) => (
                 <div key={comment.id} className="flex gap-3">
-                  <UserAvatar
-                    user={{
-                      name: comment.userName,
-                      username: comment.userId,
-                      avatar: comment.userAvatar,
-                    }}
-                    size="sm"
-                    className="flex-shrink-0"
-                  />
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarImage src={comment.userAvatar || "/placeholder.svg"} alt={comment.userName} />
+                    <AvatarFallback>{comment.userName.charAt(0)}</AvatarFallback>
+                  </Avatar>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">{comment.userName}</span>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Search, Send, PlusCircle, Paperclip, Code, Terminal } from "lucide-react"
+import { Search, Send, PlusCircle, Paperclip, Code } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 
@@ -140,10 +140,6 @@ export default function MessagesPage() {
                             {chat.user.online && (
                               <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-neon-green border-2 border-background"></span>
                             )}
-                            {/* User logo overlay */}
-                            <div className="absolute bottom-0 right-0 rounded-full bg-background border border-border/40 flex items-center justify-center h-3 w-3">
-                              <Terminal className="h-2 w-2 text-neon-green" strokeWidth={2.5} />
-                            </div>
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">

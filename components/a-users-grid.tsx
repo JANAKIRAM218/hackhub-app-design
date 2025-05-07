@@ -1,11 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Terminal, UserPlus, UserCheck } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { UserAvatar } from "@/components/user-avatar"
 
 interface User {
   id: string
@@ -142,7 +142,7 @@ export function AUsersGrid() {
 
       toast({
         title: newFollowStatus ? "Following" : "Unfollowed",
-        description: newFollowStatus ? `You started following ${user.name}` : `You have unfollowed ${user.name}`,
+        description: newFollowStatus ? `You are now following ${user.name}` : `You have unfollowed ${user.name}`,
       })
     }
   }
@@ -170,7 +170,10 @@ export function AUsersGrid() {
               className="border-border/40 bg-background/80 backdrop-blur-sm hover:border-primary/40 transition-all duration-300 group"
             >
               <CardContent className="p-6 flex flex-col items-center text-center">
-                <UserAvatar user={user} size="xl" className="mb-4" />
+                <Avatar className="h-20 w-20 mb-4 border-2 border-neon-green glow group-hover:animate-pulse-glow">
+                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                  <AvatarFallback className="text-xl">{user.name.charAt(0)}</AvatarFallback>
+                </Avatar>
 
                 <div className="space-y-1 mb-4">
                   <div className="flex items-center justify-center gap-1">

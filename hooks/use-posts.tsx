@@ -157,64 +157,50 @@ export function usePosts() {
 
   const loadInitialPosts = useCallback(() => {
     setIsLoading(true)
-
-    // Check localStorage first
-    const storedPosts = localStorage.getItem("hackhub-posts")
-    let userPosts: Post[] = []
-
-    if (storedPosts) {
-      try {
-        userPosts = JSON.parse(storedPosts)
-      } catch (error) {
-        console.error("Failed to parse posts:", error)
+    // Simulate API call
+    setTimeout(() => {
+      // Check for posts in localStorage
+      const storedPosts = localStorage.getItem("hackhub-posts")
+      let userPosts = []
+      if (storedPosts) {
+        try {
+          userPosts = JSON.parse(storedPosts)
+        } catch (error) {
+          console.error("Failed to parse posts:", error)
+        }
       }
-    }
 
-    // Combine user posts with mock posts
-    const allPosts = [...userPosts, ...ALL_MOCK_POSTS]
-
-    // Get initial posts
-    const initialPosts = allPosts.slice(0, postsPerPage)
-    setPosts(initialPosts)
-    setHasMore(allPosts.length > postsPerPage)
-    setIsLoading(false)
+      // Combine user posts with mock posts, ensuring user posts appear first
+      const initialPosts = [...userPosts, ...ALL_MOCK_POSTS.slice(0, postsPerPage - userPosts.length)]
+      // Replace this line
+      // const initialPosts = ALL_MOCK_POSTS.slice(0, postsPerPage)
+      setPosts(initialPosts)
+      setHasMore(ALL_MOCK_POSTS.length > postsPerPage)
+      setIsLoading(false)
+    }, 1000)
   }, [])
 
   const loadMorePosts = useCallback(() => {
     if (isLoading || !hasMore) return
 
     setIsLoading(true)
+    // Simulate API call
+    setTimeout(() => {
+      const nextPage = page + 1
+      const startIndex = (nextPage - 1) * postsPerPage
+      const endIndex = startIndex + postsPerPage
 
-    // Get stored posts
-    const storedPosts = localStorage.getItem("hackhub-posts")
-    let userPosts: Post[] = []
-
-    if (storedPosts) {
-      try {
-        userPosts = JSON.parse(storedPosts)
-      } catch (error) {
-        console.error("Failed to parse posts:", error)
+      if (startIndex < ALL_MOCK_POSTS.length) {
+        const newPosts = ALL_MOCK_POSTS.slice(startIndex, endIndex)
+        setPosts((prevPosts) => [...prevPosts, ...newPosts])
+        setPage(nextPage)
+        setHasMore(endIndex < ALL_MOCK_POSTS.length)
+      } else {
+        setHasMore(false)
       }
-    }
 
-    // Combine user posts with mock posts
-    const allPosts = [...userPosts, ...ALL_MOCK_POSTS]
-
-    // Calculate next page
-    const nextPage = page + 1
-    const startIndex = (nextPage - 1) * postsPerPage
-    const endIndex = startIndex + postsPerPage
-
-    if (startIndex < allPosts.length) {
-      const newPosts = allPosts.slice(startIndex, endIndex)
-      setPosts((prevPosts) => [...prevPosts, ...newPosts])
-      setPage(nextPage)
-      setHasMore(endIndex < allPosts.length)
-    } else {
-      setHasMore(false)
-    }
-
-    setIsLoading(false)
+      setIsLoading(false)
+    }, 1000)
   }, [isLoading, hasMore, page])
 
   return {

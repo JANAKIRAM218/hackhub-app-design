@@ -122,7 +122,7 @@ export function MainNav() {
             mobileMenuOpen ? "translate-x-0" : "translate-x-full",
           )}
         >
-          <div className="container py-4">
+          <div className="container py-4 bg-background">
             <div className="relative mb-4">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
