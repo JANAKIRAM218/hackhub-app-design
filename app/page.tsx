@@ -12,7 +12,7 @@ import { PostCard } from "@/components/post-card"
 import { TrendingTopics } from "@/components/trending-topics"
 import { SuggestedUsers } from "@/components/suggested-users"
 import { Button } from "@/components/ui/button"
-import { Plus, Send, Loader2 } from "lucide-react"
+import { Plus, Send, Loader2, ImageIcon, X } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { usePosts } from "@/hooks/use-posts"
 import { useInView } from "react-intersection-observer"
@@ -38,6 +38,19 @@ export default function Home() {
   const { ref, inView } = useInView()
 
   const [isPostModalOpen, setIsPostModalOpen] = useState(false)
+
+  // Listen for custom event to open post modal
+  useEffect(() => {
+    const handleOpenPostModal = () => {
+      setIsPostModalOpen(true)
+    }
+
+    window.addEventListener("open-post-modal", handleOpenPostModal)
+
+    return () => {
+      window.removeEventListener("open-post-modal", handleOpenPostModal)
+    }
+  }, [])
 
   const handleCreatePost = (content: string, image?: string) => {
     // Create a new post object
@@ -144,6 +157,37 @@ export default function Home() {
     const [content, setContent] = useState("")
     const [image, setImage] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [imagePreview, setImagePreview] = useState<string | null>(null)
+    const [isImageLoading, setIsImageLoading] = useState(false)
+    const [imageError, setImageError] = useState(false)
+    const maxLength = 500 // Maximum character limit
+
+    // Handle image URL change and preview
+    const handleImageChange = (url: string) => {
+      setImage(url)
+
+      if (!url.trim()) {
+        setImagePreview(null)
+        setImageError(false)
+        return
+      }
+
+      setIsImageLoading(true)
+      setImageError(false)
+
+      // Create an image element to test if the URL is valid
+      const img = new Image()
+      img.onload = () => {
+        setImagePreview(url)
+        setIsImageLoading(false)
+      }
+      img.onerror = () => {
+        setImagePreview(null)
+        setIsImageLoading(false)
+        setImageError(true)
+      }
+      img.src = url
+    }
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault()
@@ -153,9 +197,10 @@ export default function Home() {
 
       // Simulate API delay
       setTimeout(() => {
-        handleCreatePost(content, image || undefined)
+        handleCreatePost(content, imagePreview || undefined)
         setContent("")
         setImage("")
+        setImagePreview(null)
         setIsSubmitting(false)
       }, 500)
     }
@@ -169,31 +214,118 @@ export default function Home() {
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="grid gap-4 py-4">
-              <Textarea
-                placeholder="What's on your mind?"
-                className="min-h-[120px] bg-muted/50 border-muted focus:border-neon-green focus:ring-1 focus:ring-neon-green resize-none"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                required
-              />
+              <div className="space-y-1">
+                <Textarea
+                  placeholder="What's on your mind?"
+                  className="min-h-[120px] bg-muted/50 border-muted focus:border-neon-green focus:ring-1 focus:ring-neon-green resize-none"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  maxLength={maxLength}
+                  required
+                />
+                <div className="flex justify-end">
+                  <span
+                    className={`text-xs font-mono ${
+                      content.length > maxLength * 0.8
+                        ? content.length > maxLength * 0.9
+                          ? "text-red-500"
+                          : "text-yellow-500"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {content.length}/{maxLength} characters
+                  </span>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="image-url" className="text-sm font-mono">
                   Image URL (optional)
                 </Label>
-                <Input
-                  id="image-url"
-                  placeholder="https://example.com/image.jpg"
-                  className="bg-muted/50 border-muted focus:border-neon-green focus:ring-1 focus:ring-neon-green font-mono"
-                  value={image}
-                  onChange={(e) => setImage(e.target.value)}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="image-url"
+                    placeholder="https://example.com/image.jpg"
+                    className={`bg-muted/50 border-muted focus:ring-1 font-mono flex-1 ${
+                      imageError
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : "focus:border-neon-green focus:ring-neon-green"
+                    }`}
+                    value={image}
+                    onChange={(e) => handleImageChange(e.target.value)}
+                  />
+                  {image && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="flex-shrink-0"
+                      onClick={() => {
+                        setImage("")
+                        setImagePreview(null)
+                        setImageError(false)
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+
+                {imageError && (
+                  <p className="text-xs text-red-500 font-mono">
+                    Invalid image URL. Please check the URL and try again.
+                  </p>
+                )}
+
+                {/* Image preview */}
+                {isImageLoading && (
+                  <div className="flex items-center justify-center h-40 border border-dashed rounded-md border-border/40 bg-muted/30">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="h-8 w-8 rounded-full border-2 border-neon-green border-t-transparent animate-spin"></div>
+                      <span className="text-sm text-muted-foreground">Loading image preview...</span>
+                    </div>
+                  </div>
+                )}
+
+                {imagePreview && !isImageLoading && (
+                  <div className="relative border rounded-md overflow-hidden border-border/40 bg-muted/30">
+                    <img
+                      src={imagePreview || "/placeholder.svg"}
+                      alt="Preview"
+                      className="w-full h-auto max-h-[200px] object-contain"
+                    />
+                    <div className="absolute top-2 right-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-6 w-6 bg-background/80 backdrop-blur-sm"
+                        onClick={() => {
+                          setImage("")
+                          setImagePreview(null)
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {!imagePreview && !isImageLoading && !imageError && (
+                  <div className="flex items-center justify-center h-20 border border-dashed rounded-md border-border/40 bg-muted/30">
+                    <div className="flex flex-col items-center gap-1">
+                      <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Enter an image URL to see a preview</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsPostModalOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="glow" disabled={!content.trim() || isSubmitting}>
+              <Button type="submit" className="glow" disabled={!content.trim() || isSubmitting || isImageLoading}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...
