@@ -1,12 +1,14 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect, useRef } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
-import { Heart, MessageCircle, Share2, Bookmark, Send, X } from "lucide-react"
+import { Heart, MessageCircle, Share2, Bookmark, Send, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { CodeBlock } from "@/components/code-block"
 import { useAuth } from "@/hooks/use-auth"
 import { cn } from "@/lib/utils"
@@ -29,6 +31,7 @@ interface Post {
   }
   content: string
   image?: string
+  images?: string[] // Array of image URLs for carousel
   code?: {
     language: string
     content: string
@@ -43,6 +46,19 @@ interface PostCardProps {
   post: Post
 }
 
+type MessageType = "text" | "image" | "voice" | "file"
+
+interface Message {
+  id: string
+  content: string
+  imageUrl?: string
+  audioUrl?: string
+  fileName?: string
+  fileSize?: number
+  type: MessageType
+  isDeleted?: boolean
+}
+
 export function PostCard({ post }: PostCardProps) {
   const { user } = useAuth()
   const [liked, setLiked] = useState(false)
@@ -54,6 +70,33 @@ export function PostCard({ post }: PostCardProps) {
   const [newComment, setNewComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const commentInputRef = useRef<HTMLTextAreaElement>(null)
+
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  const carouselRef = useRef<HTMLDivElement>(null)
+
+  // Get all images for the post (main image + related images)
+  const getAllImages = () => {
+    const images: string[] = []
+
+    // Add main image if it exists
+    if (post.image) {
+      images.push(post.image)
+    }
+
+    // Add additional images if they exist
+    if (post.images && post.images.length > 0) {
+      images.push(...post.images)
+    }
+
+    // If no images provided, use default
+    if (images.length === 0 && !post.code) {
+      images.push(getDefaultImage())
+    }
+
+    return images
+  }
 
   // Default AI-generated image URLs based on post content keywords
   const defaultImages = [
@@ -69,6 +112,39 @@ export function PostCard({ post }: PostCardProps) {
   const getDefaultImage = () => {
     const postIdNum = Number.parseInt(post.id.replace(/\D/g, "")) || 0
     return defaultImages[postIdNum % defaultImages.length]
+  }
+
+  const handlePrevImage = () => {
+    const allImages = getAllImages()
+    setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : allImages.length - 1))
+  }
+
+  const handleNextImage = () => {
+    const allImages = getAllImages()
+    setCurrentImageIndex((prev) => (prev < allImages.length - 1 ? prev + 1 : 0))
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > 50
+    const isRightSwipe = distance < -50
+
+    if (isLeftSwipe) {
+      handleNextImage()
+    } else if (isRightSwipe) {
+      handlePrevImage()
+    }
   }
 
   // Check if post is liked/bookmarked and load comments
@@ -98,6 +174,11 @@ export function PostCard({ post }: PostCardProps) {
 
     // Load comments
     loadComments()
+  }, [post.id])
+
+  // Reset carousel index when post changes
+  useEffect(() => {
+    setCurrentImageIndex(0)
   }, [post.id])
 
   const loadComments = () => {
@@ -204,6 +285,9 @@ export function PostCard({ post }: PostCardProps) {
     }, 500)
   }
 
+  const allImages = getAllImages()
+  const hasMultipleImages = allImages.length > 1
+
   return (
     <Card className="border-border/40 bg-background/80 backdrop-blur-sm hover:border-primary/40 transition-all duration-300">
       <CardHeader className="flex flex-row items-start gap-4 p-4">
@@ -222,17 +306,74 @@ export function PostCard({ post }: PostCardProps) {
       <CardContent className="p-4 pt-0">
         <p className="mb-3">{post.content}</p>
 
-        {post.image ? (
-          <div className="rounded-md overflow-hidden mb-3 border border-border/40">
-            <img src={post.image || "/placeholder.svg"} alt="Post content" className="w-full h-auto object-cover" />
-          </div>
-        ) : !post.code ? (
-          <div className="rounded-md overflow-hidden mb-3 border border-border/40">
-            <img
-              src={getDefaultImage() || "/placeholder.svg"}
-              alt="AI generated visualization"
-              className="w-full h-auto object-cover"
-            />
+        {allImages.length > 0 && !post.code ? (
+          <div className="mb-3">
+            {/* Image Carousel */}
+            <div className="relative">
+              <div
+                ref={carouselRef}
+                className="overflow-hidden rounded-md border border-border/40"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div
+                  className="flex transition-transform duration-300 ease-in-out"
+                  style={{
+                    transform: `translateX(-${currentImageIndex * 100}%)`,
+                    width: `${allImages.length * 100}%`,
+                  }}
+                >
+                  {allImages.map((img, index) => (
+                    <div key={index} className="w-full h-full flex-shrink-0 flex items-center justify-center">
+                      <img
+                        src={img || "/placeholder.svg"}
+                        alt={`Post content ${index + 1}`}
+                        className="w-full h-auto object-cover max-h-[300px]"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Navigation arrows - only show if multiple images */}
+              {hasMultipleImages && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background/90 backdrop-blur-sm h-8 w-8"
+                    onClick={handlePrevImage}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background/90 backdrop-blur-sm h-8 w-8"
+                    onClick={handleNextImage}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+
+              {/* Carousel indicators - only show if multiple images */}
+              {hasMultipleImages && (
+                <div className="flex justify-center mt-2 gap-1">
+                  {allImages.map((_, index) => (
+                    <button
+                      key={index}
+                      className={cn(
+                        "w-2 h-2 rounded-full transition-colors",
+                        currentImageIndex === index ? "bg-neon-green" : "bg-muted-foreground/50",
+                      )}
+                      onClick={() => setCurrentImageIndex(index)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         ) : null}
 

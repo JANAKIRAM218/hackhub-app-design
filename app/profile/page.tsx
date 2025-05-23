@@ -2,9 +2,8 @@ import { MainNav } from "@/components/main-nav"
 import { Sidebar } from "@/components/sidebar"
 import { PostCard } from "@/components/post-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { FileCode, ImageIcon, MessageSquare, Bookmark, UserPlus, LinkIcon, MapPin, Calendar } from "lucide-react"
+import { FileCode, ImageIcon, MessageSquare, Bookmark, LinkIcon, MapPin, Calendar } from "lucide-react"
 
 export default function ProfilePage() {
   // Mock user data
@@ -90,10 +89,6 @@ export default function ProfilePage() {
                       <h1 className="text-2xl font-bold font-mono glow-text">{user.name}</h1>
                       <p className="text-muted-foreground">@{user.username}</p>
                     </div>
-                    <Button className="glow-blue">
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Follow
-                    </Button>
                   </div>
 
                   <p className="mt-4">{user.bio}</p>

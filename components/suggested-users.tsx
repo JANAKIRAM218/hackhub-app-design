@@ -1,3 +1,6 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -16,6 +19,31 @@ interface SuggestedUsersProps {
 }
 
 export function SuggestedUsers({ users }: SuggestedUsersProps) {
+  const [followedUsers, setFollowedUsers] = useState<Record<string, boolean>>({})
+
+  // Load followed users from localStorage on mount
+  useEffect(() => {
+    const storedFollows = localStorage.getItem("hackhub-follows")
+    if (storedFollows) {
+      try {
+        setFollowedUsers(JSON.parse(storedFollows))
+      } catch (error) {
+        console.error("Failed to parse follows:", error)
+      }
+    }
+  }, [])
+
+  // Handle follow/unfollow
+  const toggleFollow = (userId: string) => {
+    const newFollowedUsers = {
+      ...followedUsers,
+      [userId]: !followedUsers[userId],
+    }
+
+    setFollowedUsers(newFollowedUsers)
+    localStorage.setItem("hackhub-follows", JSON.stringify(newFollowedUsers))
+  }
+
   return (
     <Card className="border-border/40 bg-background/80 backdrop-blur-sm">
       <CardHeader className="pb-2">
@@ -39,8 +67,13 @@ export function SuggestedUsers({ users }: SuggestedUsersProps) {
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-1">{user.bio}</p>
               </div>
-              <Button variant="outline" size="sm" className="glow-blue hover:text-neon-blue">
-                Follow
+              <Button
+                variant={followedUsers[user.id] ? "default" : "outline"}
+                size="sm"
+                className={followedUsers[user.id] ? "glow" : "glow-blue hover:text-neon-blue"}
+                onClick={() => toggleFollow(user.id)}
+              >
+                {followedUsers[user.id] ? "Following" : "Follow"}
               </Button>
             </div>
           ))}

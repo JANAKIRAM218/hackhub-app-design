@@ -47,7 +47,20 @@ export function MainNav() {
   const searchContainerRef = useRef<HTMLDivElement>(null)
 
   // Search functionality
-  const { query, setQuery, results, isLoading, isOpen, setIsOpen, navigateToResult, navigateToSearchPage } = useSearch()
+  const {
+    query,
+    setQuery,
+    results,
+    isLoading,
+    isOpen,
+    setIsOpen,
+    searchHistory,
+    useHistoryItem,
+    removeFromSearchHistory,
+    clearSearchHistory,
+    navigateToResult,
+    navigateToSearchPage,
+  } = useSearch()
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -114,7 +127,7 @@ export function MainNav() {
                     className="pl-8 bg-muted/50 border-muted focus:border-primary focus:ring-1 focus:ring-primary"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    onFocus={() => query.trim() && setIsOpen(true)}
+                    onFocus={() => setIsOpen(true)}
                   />
                 </div>
               </form>
@@ -126,8 +139,12 @@ export function MainNav() {
                     results={results}
                     isLoading={isLoading}
                     query={query}
+                    searchHistory={searchHistory}
                     onSelect={navigateToResult}
                     onSearchAll={navigateToSearchPage}
+                    onUseHistoryItem={useHistoryItem}
+                    onRemoveHistoryItem={removeFromSearchHistory}
+                    onClearHistory={clearSearchHistory}
                   />
                 </div>
               )}
@@ -219,7 +236,7 @@ export function MainNav() {
                     className="pl-8 bg-muted/50 border-muted focus:border-primary focus:ring-1 focus:ring-primary"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    onFocus={() => query.trim() && setIsOpen(true)}
+                    onFocus={() => setIsOpen(true)}
                   />
                 </div>
               </form>
@@ -231,6 +248,7 @@ export function MainNav() {
                     results={results}
                     isLoading={isLoading}
                     query={query}
+                    searchHistory={searchHistory}
                     onSelect={(result) => {
                       navigateToResult(result)
                       setMobileMenuOpen(false)
@@ -239,6 +257,9 @@ export function MainNav() {
                       navigateToSearchPage()
                       setMobileMenuOpen(false)
                     }}
+                    onUseHistoryItem={useHistoryItem}
+                    onRemoveHistoryItem={removeFromSearchHistory}
+                    onClearHistory={clearSearchHistory}
                   />
                 </div>
               )}

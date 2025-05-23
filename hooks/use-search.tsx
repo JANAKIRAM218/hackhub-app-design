@@ -32,15 +32,49 @@ export interface SearchTopic {
 
 export type SearchResult = SearchUser | SearchPost | SearchTopic
 
+// Define search history item type
+export interface SearchHistoryItem {
+  query: string
+  timestamp: number
+  image?: string
+  category?: "user" | "code" | "topic" | "general"
+}
+
+// Maximum number of search history items to store
+const MAX_SEARCH_HISTORY = 5
+
+// Categories and their associated keywords
+const CATEGORY_KEYWORDS = {
+  user: ["user", "profile", "name", "alex", "sarah", "sophia", "marcus", "aria", "adrian"],
+  code: ["code", "python", "javascript", "java", "c++", "html", "css", "react", "node", "function", "class", "api"],
+  topic: ["topic", "cybersecurity", "ai", "blockchain", "quantum", "ethical", "machine", "learning", "hack"],
+}
+
 export function useSearch() {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([])
   const router = useRouter()
 
   // Get posts for searching
   const { posts } = usePosts()
+
+  // Load search history from localStorage on mount
+  useEffect(() => {
+    const storedHistory = localStorage.getItem("hackhub-search-history")
+    if (storedHistory) {
+      try {
+        const parsedHistory = JSON.parse(storedHistory)
+        if (Array.isArray(parsedHistory)) {
+          setSearchHistory(parsedHistory)
+        }
+      } catch (error) {
+        console.error("Failed to parse search history:", error)
+      }
+    }
+  }, [])
 
   // Mock users for search
   const mockUsers = [
@@ -114,6 +148,102 @@ export function useSearch() {
     { id: "topic-8", name: "javascript", posts: 356, type: "topic" as const },
   ]
 
+  // Determine the category of a search query
+  const determineCategory = (searchQuery: string): "user" | "code" | "topic" | "general" => {
+    const normalizedQuery = searchQuery.toLowerCase()
+
+    for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+      for (const keyword of keywords) {
+        if (normalizedQuery.includes(keyword)) {
+          return category as "user" | "code" | "topic"
+        }
+      }
+    }
+
+    return "general"
+  }
+
+  // Generate an image for a search query based on its category
+  const generateImageForSearch = (searchQuery: string, category: "user" | "code" | "topic" | "general"): string => {
+    // Check if the query matches a user
+    const matchedUser = mockUsers.find(
+      (user) =>
+        user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.username.toLowerCase().includes(searchQuery.toLowerCase()),
+    )
+
+    if (matchedUser) {
+      return matchedUser.avatar
+    }
+
+    // Check if the query matches a topic
+    const matchedTopic = mockTopics.find((topic) => topic.name.toLowerCase().includes(searchQuery.toLowerCase()))
+
+    if (matchedTopic) {
+      return `/placeholder.svg?height=40&width=40&text=${encodeURIComponent(matchedTopic.name)}`
+    }
+
+    // Generate category-based placeholder
+    switch (category) {
+      case "user":
+        return "/placeholder.svg?height=40&width=40&text=User"
+      case "code":
+        return "/placeholder.svg?height=40&width=40&text=Code"
+      case "topic":
+        return "/placeholder.svg?height=40&width=40&text=Topic"
+      default:
+        // Generate a unique color based on the first character of the search
+        const firstChar = searchQuery.charAt(0).toUpperCase()
+        const charCode = firstChar.charCodeAt(0)
+        return `/placeholder.svg?height=40&width=40&text=${encodeURIComponent(firstChar)}`
+    }
+  }
+
+  // Add search to history
+  const addToSearchHistory = useCallback(
+    (searchQuery: string) => {
+      if (!searchQuery.trim()) return
+
+      const category = determineCategory(searchQuery)
+      const image = generateImageForSearch(searchQuery, category)
+
+      // Create new history item
+      const newHistoryItem: SearchHistoryItem = {
+        query: searchQuery,
+        timestamp: Date.now(),
+        image,
+        category,
+      }
+
+      // Create new history array with the current search at the beginning
+      // and remove any duplicates of the current search
+      const updatedHistory = [
+        newHistoryItem,
+        ...searchHistory.filter((item) => item.query.toLowerCase() !== searchQuery.toLowerCase()),
+      ].slice(0, MAX_SEARCH_HISTORY)
+
+      setSearchHistory(updatedHistory)
+      localStorage.setItem("hackhub-search-history", JSON.stringify(updatedHistory))
+    },
+    [searchHistory],
+  )
+
+  // Remove item from search history
+  const removeFromSearchHistory = useCallback(
+    (searchQuery: string) => {
+      const updatedHistory = searchHistory.filter((item) => item.query.toLowerCase() !== searchQuery.toLowerCase())
+      setSearchHistory(updatedHistory)
+      localStorage.setItem("hackhub-search-history", JSON.stringify(updatedHistory))
+    },
+    [searchHistory],
+  )
+
+  // Clear entire search history
+  const clearSearchHistory = useCallback(() => {
+    setSearchHistory([])
+    localStorage.removeItem("hackhub-search-history")
+  }, [])
+
   // Search function
   const performSearch = useCallback(
     (searchQuery: string) => {
@@ -177,9 +307,13 @@ export function useSearch() {
       setIsOpen(true)
     } else {
       setResults([])
-      setIsOpen(false)
+      // Keep dropdown open if empty to show search history
+      // but only if it's already open (user has focused the input)
+      if (!isOpen) {
+        setIsOpen(false)
+      }
     }
-  }, [query, performSearch])
+  }, [query, performSearch, isOpen])
 
   // Navigate to result
   const navigateToResult = (result: SearchResult) => {
@@ -201,10 +335,19 @@ export function useSearch() {
   // Navigate to search page with current query
   const navigateToSearchPage = () => {
     if (query.trim()) {
+      // Add to search history before navigating
+      addToSearchHistory(query.trim())
+
       router.push(`/search?q=${encodeURIComponent(query.trim())}`)
       setQuery("")
       setIsOpen(false)
     }
+  }
+
+  // Use a search from history
+  const useHistoryItem = (historyItem: SearchHistoryItem) => {
+    setQuery(historyItem.query)
+    performSearch(historyItem.query)
   }
 
   return {
@@ -214,6 +357,11 @@ export function useSearch() {
     isLoading,
     isOpen,
     setIsOpen,
+    searchHistory,
+    addToSearchHistory,
+    removeFromSearchHistory,
+    clearSearchHistory,
+    useHistoryItem,
     navigateToResult,
     navigateToSearchPage,
   }

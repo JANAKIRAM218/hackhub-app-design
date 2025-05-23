@@ -2,19 +2,34 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Loader2, Search, User, FileText, Hash } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Loader2, Search, User, FileText, Hash, Clock, X, Trash2, Code, Globe } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { SearchResult } from "@/hooks/use-search"
+import type { SearchResult, SearchHistoryItem } from "@/hooks/use-search"
 
 interface SearchResultsProps {
   results: SearchResult[]
   isLoading: boolean
   query: string
+  searchHistory: SearchHistoryItem[]
   onSelect: (result: SearchResult) => void
   onSearchAll: () => void
+  onUseHistoryItem: (historyItem: SearchHistoryItem) => void
+  onRemoveHistoryItem: (query: string) => void
+  onClearHistory: () => void
 }
 
-export function SearchResults({ results, isLoading, query, onSelect, onSearchAll }: SearchResultsProps) {
+export function SearchResults({
+  results,
+  isLoading,
+  query,
+  searchHistory,
+  onSelect,
+  onSearchAll,
+  onUseHistoryItem,
+  onRemoveHistoryItem,
+  onClearHistory,
+}: SearchResultsProps) {
   const [activeIndex, setActiveIndex] = useState<number>(-1)
   const resultRefs = useRef<(HTMLButtonElement | null)[]>([])
 
@@ -27,12 +42,14 @@ export function SearchResults({ results, isLoading, query, onSelect, onSearchAll
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!results.length) return
+      if (!results.length && !searchHistory.length) return
 
       switch (e.key) {
         case "ArrowDown":
           e.preventDefault()
-          setActiveIndex((prev) => (prev < results.length - 1 ? prev + 1 : prev))
+          if (results.length > 0) {
+            setActiveIndex((prev) => (prev < results.length - 1 ? prev + 1 : prev))
+          }
           break
         case "ArrowUp":
           e.preventDefault()
@@ -40,7 +57,7 @@ export function SearchResults({ results, isLoading, query, onSelect, onSearchAll
           break
         case "Enter":
           e.preventDefault()
-          if (activeIndex >= 0) {
+          if (activeIndex >= 0 && results.length > 0) {
             onSelect(results[activeIndex])
           } else if (query.trim()) {
             onSearchAll()
@@ -51,7 +68,7 @@ export function SearchResults({ results, isLoading, query, onSelect, onSearchAll
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [results, activeIndex, onSelect, onSearchAll, query])
+  }, [results, activeIndex, onSelect, onSearchAll, query, searchHistory.length])
 
   // Scroll active item into view
   useEffect(() => {
@@ -63,6 +80,54 @@ export function SearchResults({ results, isLoading, query, onSelect, onSearchAll
     }
   }, [activeIndex])
 
+  // Get icon for category
+  const getCategoryIcon = (category?: string) => {
+    switch (category) {
+      case "user":
+        return <User className="h-4 w-4 text-neon-green" />
+      case "code":
+        return <Code className="h-4 w-4 text-neon-blue" />
+      case "topic":
+        return <Hash className="h-4 w-4 text-neon-green" />
+      default:
+        return <Globe className="h-4 w-4 text-neon-blue" />
+    }
+  }
+
+  // Format timestamp
+  const formatTimestamp = (timestamp: number) => {
+    const now = Date.now()
+    const diff = now - timestamp
+
+    // Less than a minute
+    if (diff < 60 * 1000) {
+      return "Just now"
+    }
+
+    // Less than an hour
+    if (diff < 60 * 60 * 1000) {
+      const minutes = Math.floor(diff / (60 * 1000))
+      return `${minutes}m ago`
+    }
+
+    // Less than a day
+    if (diff < 24 * 60 * 60 * 1000) {
+      const hours = Math.floor(diff / (60 * 60 * 1000))
+      return `${hours}h ago`
+    }
+
+    // Less than a week
+    if (diff < 7 * 24 * 60 * 60 * 1000) {
+      const days = Math.floor(diff / (24 * 60 * 60 * 1000))
+      return `${days}d ago`
+    }
+
+    // Format as date
+    const date = new Date(timestamp)
+    return date.toLocaleDateString()
+  }
+
+  // Show loading state
   if (isLoading) {
     return (
       <div className="p-4 flex items-center justify-center">
@@ -72,6 +137,66 @@ export function SearchResults({ results, isLoading, query, onSelect, onSearchAll
     )
   }
 
+  // Show search history when query is empty
+  if (query.trim() === "" && searchHistory.length > 0) {
+    return (
+      <div className="py-2 max-h-[60vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-4 py-2">
+          <h3 className="text-sm font-medium text-muted-foreground flex items-center">
+            <Clock className="h-3.5 w-3.5 mr-1.5" />
+            Recent Searches
+          </h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-red-400"
+            onClick={onClearHistory}
+          >
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+            Clear All
+          </Button>
+        </div>
+        <div className="mt-1">
+          {searchHistory.map((item) => (
+            <div key={item.query} className="flex items-center px-4 py-2 hover:bg-muted/50 transition-colors">
+              <button className="flex items-center flex-1 text-left" onClick={() => onUseHistoryItem(item)}>
+                <div className="mr-3 flex-shrink-0">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={item.image || "/placeholder.svg"} alt={item.query} />
+                    <AvatarFallback className="bg-muted/50 text-foreground">
+                      {getCategoryIcon(item.category)}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="truncate font-medium">{item.query}</p>
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    {getCategoryIcon(item.category)}
+                    <span className="ml-1 capitalize">{item.category || "Search"}</span>
+                    <span className="mx-1">•</span>
+                    <span>{formatTimestamp(item.timestamp)}</span>
+                  </div>
+                </div>
+              </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-red-400"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onRemoveHistoryItem(item.query)
+                }}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Show no results message
   if (results.length === 0 && query.trim()) {
     return (
       <div className="p-4 text-center text-muted-foreground">
@@ -83,6 +208,7 @@ export function SearchResults({ results, isLoading, query, onSelect, onSearchAll
     )
   }
 
+  // Show search results
   return (
     <div className="py-2 max-h-[60vh] overflow-y-auto">
       {results.length > 0 && (
